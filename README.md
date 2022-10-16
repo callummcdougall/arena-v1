@@ -1,0 +1,1 @@
+Participants in [ARENA Virtual](https://www.arena.education/) should clone this repo into their personal machine, and work on solutions there. More details can be found in the Notion page, which you should all have access to.
