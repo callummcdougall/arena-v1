@@ -148,13 +148,10 @@ a_0 = np.random.randn()
 A_n = np.random.randn(NUM_FREQUENCIES)
 B_n = np.random.randn(NUM_FREQUENCIES)
 
-learning_rate = 1e-6
-total_steps = 4000
-
 y_pred_list = []
 coeffs_list = []
 
-for step in range(total_steps):
+for step in range(TOTAL_STEPS):
     
     # Forward pass: compute predicted y
     y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
@@ -173,9 +170,9 @@ for step in range(total_steps):
     grad_B_n = einsum("freq x, x -> freq", x_sin, grad_y_pred)
     
     # Update weights using gradient descent
-    a_0 -= learning_rate * grad_a_0
-    A_n -= learning_rate * grad_A_n
-    B_n -= learning_rate * grad_B_n
+    a_0 -= LEARNING_RATE * grad_a_0
+    A_n -= LEARNING_RATE * grad_A_n
+    B_n -= LEARNING_RATE * grad_B_n
 
 
 
@@ -199,13 +196,13 @@ a_0 = torch.randn((), device=device, dtype=dtype)
 A_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype)
 B_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype)
 
-learning_rate = 1e-6
-total_steps = 4000
+LEARNING_RATE = 1e-6
+TOTAL_STEPS = 4000
 
 y_pred_list = []
 coeffs_list = []
 
-for step in range(total_steps):
+for step in range(TOTAL_STEPS):
     
     # Forward pass: compute predicted y
     y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
@@ -224,9 +221,9 @@ for step in range(total_steps):
     grad_B_n = einsum("freq x, x -> freq", x_sin, grad_y_pred)
     
     # Update weights using gradient descent
-    a_0 -= learning_rate * grad_a_0
-    A_n -= learning_rate * grad_A_n
-    B_n -= learning_rate * grad_B_n
+    a_0 -= LEARNING_RATE * grad_a_0
+    A_n -= LEARNING_RATE * grad_A_n
+    B_n -= LEARNING_RATE * grad_B_n
 
 
 
@@ -250,13 +247,13 @@ a_0 = torch.randn((), device=device, dtype=dtype, requires_grad=True)
 A_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype, requires_grad=True)
 B_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype, requires_grad=True)
 
-learning_rate = 1e-6
-total_steps = 4000
+LEARNING_RATE = 1e-6
+TOTAL_STEPS = 4000
 
 y_pred_list = []
 coeffs_list = []
 
-for step in range(total_steps):
+for step in range(TOTAL_STEPS):
     
     # Forward pass: compute predicted y
     y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
@@ -265,7 +262,8 @@ for step in range(total_steps):
     loss = torch.square(y - y_pred).sum()
     if step % 100 == 0:
         print(f"{loss = :.2f}")
-        y_pred_list.append(([a_0.item(), A_n.to("cpu").detach().numpy(), B_n.to("cpu").detach().numpy()], y_pred))
+        y_pred_list.append(y_pred.detach())
+        coeffs_list.append([a_0.item(), A_n.to("cpu").detach().numpy().copy(), B_n.to("cpu").detach().numpy().copy()])
     
     # Backprop to compute gradients of coeffs with respect to loss
     loss.backward()
@@ -273,7 +271,7 @@ for step in range(total_steps):
     # Update weights using gradient descent
     with torch.no_grad():
         for coeff in [a_0, A_n, B_n]:
-            coeff -= learning_rate * coeff.grad
+            coeff -= LEARNING_RATE * coeff.grad
             coeff.grad = None
 
 
@@ -295,15 +293,15 @@ x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
 
 x_all = torch.concat([x_cos, x_sin], dim=0).T # we use .T so that it the 0th axis is batch dim
 
-learning_rate = 1e-6
-total_steps = 4000
+LEARNING_RATE = 1e-6
+TOTAL_STEPS = 4000
 
 y_pred_list = []
 coeffs_list = []
 
 model = torch.nn.Sequential(torch.nn.Linear(2 * NUM_FREQUENCIES, 1), torch.nn.Flatten(0, 1))
 
-for step in range(total_steps):
+for step in range(TOTAL_STEPS):
     
     # Forward pass: compute predicted y
     y_pred = model(x_all)
@@ -315,7 +313,8 @@ for step in range(total_steps):
         A_n = list(model.parameters())[0].detach().numpy()[:3].squeeze()
         B_n = list(model.parameters())[0].detach().numpy()[:6].squeeze()
         a_0 = list(model.parameters())[1].item()
-        y_pred_list.append(([a_0, A_n, B_n], y_pred.cpu().detach().numpy()))
+        y_pred_list.append(y_pred.cpu().detach().numpy())
+        coeffs_list.append([a_0, A_n.copy(), B_n.copy()])
     
     # Backprop to compute gradients of coeffs with respect to loss
     loss.backward()
@@ -323,7 +322,7 @@ for step in range(total_steps):
     # Update weights using gradient descent
     with torch.no_grad():
         for param in model.parameters():
-            param -= learning_rate * param.grad
+            param -= LEARNING_RATE * param.grad
     model.zero_grad()
 
 
@@ -345,8 +344,8 @@ x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
 
 x_all = torch.concat([x_cos, x_sin], dim=0).T # we use .T so that it the 0th axis is batch dim
 
-learning_rate = 1e-6
-total_steps = 4000
+LEARNING_RATE = 1e-6
+TOTAL_STEPS = 4000
 
 y_pred_list = [] 
 coeffs_list = []
@@ -355,7 +354,7 @@ model = nn.Sequential(torch.nn.Linear(2 * NUM_FREQUENCIES, 1), torch.nn.Flatten(
 
 optimiser = optim.SGD(model.parameters(), lr=1e-6)
 
-for step in range(total_steps):
+for step in range(TOTAL_STEPS):
     
     # Forward pass: compute predicted y
     y_pred = model(x_all)
@@ -364,10 +363,11 @@ for step in range(total_steps):
     loss = nn.MSELoss(reduction='sum')(y_pred, y)
     if step % 100 == 0:
         print(f"{loss = :.2f}")
-        A_n = list(model.parameters())[0].detach().numpy()[:3].squeeze().copy()
-        B_n = list(model.parameters())[0].detach().numpy()[:6].squeeze().copy()
+        A_n = list(model.parameters())[0].detach().numpy()[:3].squeeze()
+        B_n = list(model.parameters())[0].detach().numpy()[:6].squeeze()
         a_0 = list(model.parameters())[1].item()
-        y_pred_list.append(([a_0, A_n, B_n], y_pred.cpu().detach().numpy()))
+        y_pred_list.append(y_pred.cpu().detach().numpy())
+        coeffs_list.append([a_0, A_n.copy(), B_n.copy()])
     
     # Backprop to compute gradients of coeffs with respect to loss
     # Update weights using gradient descent
