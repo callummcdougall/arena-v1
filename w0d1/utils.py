@@ -57,7 +57,7 @@ def test_integrate_product(integrate_product):
     integrate_product_true = 0.5 * (x1 - x0)
     np.testing.assert_allclose(integrate_product_true, integrate_product_approx, atol=1e-10)
 
-def create_interactive_fourier_graph(calculate_fourier_series: Callable, func: Callable):
+def create_interactive_fourier_graph_widgets(calculate_fourier_series: Callable, func: Callable):
 
     label = wg.Label("Number of terms in Fourier series: ")
 
@@ -86,6 +86,51 @@ def create_interactive_fourier_graph(calculate_fourier_series: Callable, func: C
     box_layout = wg.Layout(border="solid 1px black", padding="20px", margin="20px", width="80%")
 
     return wg.VBox([wg.HBox([label, slider], layout=box_layout), fig])
+
+def bool_list(i, m):
+    l = [True] + [False for j in range(m)]
+    l[i] = True
+    return l
+
+def create_interactive_fourier_graph(calculate_fourier_series: Callable, func: Callable):
+
+    x = np.linspace(-np.pi, np.pi, 300)
+    y = func(x)
+    
+    sliders = [dict(
+        active=0,
+        currentvalue_prefix="Max frequency: ",
+        pad_t=40,
+        steps=[
+            dict(method="update", args=[{"visible": bool_list(i, 30)}])
+            for i in range(30)
+        ]
+    )]
+    
+    data = [go.Scatter(x=x, y=y, name="Original function", mode="lines")]
+    
+    for max_freq in range(30):
+        data.append(
+            go.Scatter(
+                x=x, 
+                y=calculate_fourier_series(func, max_freq)[1](x),
+                name="Reconstructed function", 
+                mode="lines",
+                visible=(max_freq==0)
+            )
+        )
+
+    fig = go.Figure(
+        data=data,
+        layout = go.Layout(
+            title_text=r"Original vs reconstructed", 
+            template="simple_white", 
+            margin_t=100,
+            sliders=sliders
+        )
+    )
+
+    return fig
 
 TARGET_FUNC = np.sin
 NUM_FREQUENCIES = 4
