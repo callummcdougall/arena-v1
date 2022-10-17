@@ -1,7 +1,5 @@
 import numpy as np
 
-import matplotlib.pyplot as plt
-
 import plotly.express as px
 import plotly.graph_objs as go
 
@@ -136,7 +134,6 @@ LEARNING_RATE = 1e-6
 
 import numpy as np
 import math
-import matplotlib.pyplot as plt
 
 x = np.linspace(-math.pi, math.pi, 2000)
 y = TARGET_FUNC(x)
@@ -181,7 +178,6 @@ for step in range(TOTAL_STEPS):
 import torch
 from torch import nn, optim
 import math
-import matplotlib.pyplot as plt
 
 dtype = torch.float
 device = torch.device("cpu")
@@ -232,7 +228,6 @@ for step in range(TOTAL_STEPS):
 
 import torch
 import math
-import matplotlib.pyplot as plt
 
 dtype = torch.float
 device = torch.device("cpu")
@@ -280,7 +275,6 @@ for step in range(TOTAL_STEPS):
 
 import torch
 import math
-import matplotlib.pyplot as plt
 
 dtype = torch.float
 device = torch.device("cpu")
@@ -331,7 +325,6 @@ for step in range(TOTAL_STEPS):
 
 import torch
 import math
-import matplotlib.pyplot as plt
 
 dtype = torch.float
 device = torch.device("cpu")
