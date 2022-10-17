@@ -150,8 +150,9 @@ coeffs_list = []
 
 for step in range(TOTAL_STEPS):
     
-    # Forward pass: compute predicted y
-    y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
+    y_pred = 0.5 * a_0 + x_cos.T @ A_n + x_sin.T @ B_n
+    # or with einsum:
+    # y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
     
     # Compute and print loss
     loss = np.square(y - y_pred).sum()
@@ -163,8 +164,11 @@ for step in range(TOTAL_STEPS):
     # Backprop to compute gradients of coeffs with respect to loss
     grad_y_pred = 2.0 * (y_pred - y)
     grad_a_0 = 0.5 * grad_y_pred.sum()
-    grad_A_n = einsum("freq x, x -> freq", x_cos, grad_y_pred)
-    grad_B_n = einsum("freq x, x -> freq", x_sin, grad_y_pred)
+    grad_A_n = x_cos @ grad_y_pred
+    grad_B_n = x_sin @ grad_y_pred
+    # or with einsum:
+    # grad_A_n = einsum("freq x, x -> freq", x_cos, grad_y_pred)
+    # grad_B_n = einsum("freq x, x -> freq", x_sin, grad_y_pred)
     
     # Update weights using gradient descent
     a_0 -= LEARNING_RATE * grad_a_0
@@ -201,7 +205,9 @@ coeffs_list = []
 for step in range(TOTAL_STEPS):
     
     # Forward pass: compute predicted y
-    y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
+    y_pred = 0.5 * a_0 + x_cos.T @ A_n + x_sin.T @ B_n
+    # or with einsum:
+    # y_pred = 0.5 * a_0 + einsum("freq x, freq -> x", x_cos, A_n) + einsum("freq x, freq -> x", x_sin, B_n)
     
     # Compute and print loss
     loss = np.square(y - y_pred).sum()
@@ -213,8 +219,11 @@ for step in range(TOTAL_STEPS):
     # Backprop to compute gradients of coeffs with respect to loss
     grad_y_pred = 2.0 * (y_pred - y)
     grad_a_0 = 0.5 * grad_y_pred.sum()
-    grad_A_n = einsum("freq x, x -> freq", x_cos, grad_y_pred)
-    grad_B_n = einsum("freq x, x -> freq", x_sin, grad_y_pred)
+    grad_A_n = x_cos @ grad_y_pred
+    grad_B_n = x_sin @ grad_y_pred
+    # or with einsum:
+    # grad_A_n = einsum("freq x, x -> freq", x_cos, grad_y_pred)
+    # grad_B_n = einsum("freq x, x -> freq", x_sin, grad_y_pred)
     
     # Update weights using gradient descent
     a_0 -= LEARNING_RATE * grad_a_0
