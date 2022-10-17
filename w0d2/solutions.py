@@ -162,3 +162,34 @@ def as_strided_mm(matA: t.Tensor, matB: t.Tensor) -> t.Tensor:
     product_expanded = matA_expanded * matB_expanded
     
     return product_expanded.sum(dim=1)
+
+
+
+
+
+def conv1d_minimal(x: t.Tensor, weights: t.Tensor) -> t.Tensor:
+    """Like torch's conv1d using bias=False and all other keyword arguments left at their default values.
+
+    x: shape (batch, in_channels, in_width)
+    weights: shape (out_channels, in_channels, kernel_width)
+
+    Returns: shape (batch, out_channels, out_width)
+    """
+    
+    batch, in_channels, in_width = x.shape
+    out_channels, in_channels_2, kernel_width = weights.shape
+    assert in_channels == in_channels_2, "in_channels for x and weights don't match up"
+    out_width = in_width - kernel_width + 1
+    
+    xsB, xsI, xsWi = x.stride()
+    wsO, wsI, wsW = weights.stride()
+    
+    x_new_shape = (batch, in_channels, out_width, kernel_width)
+    x_new_stride = (xsB, xsI, xsWi, xsWi)
+    # Common error: xsWi is always 1, so if you put 1 here you won't spot your mistake until you try this with conv2d!
+    x_strided = x.as_strided(size=x_new_shape, stride=x_new_stride)
+    
+    return einsum(
+        "batch in_channels out_width kernel_width, out_channels in_channels kernel_width -> batch out_channels out_width", 
+        x_strided, weights
+    )
