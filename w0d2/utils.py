@@ -335,6 +335,12 @@ def test_batchnorm2d_running_mean(BatchNorm2d):
     actual_eval_mean = bn(x).mean((0, 2, 3))
     t.testing.assert_close(actual_eval_mean, t.zeros(3))
 
+def test_relu(ReLU):
+    x = t.randn(10) - 0.5
+    actual = ReLU()(x)
+    expected = F.relu(x)
+    t.testing.assert_close(actual, expected)
+
 def test_flatten(Flatten):
     x = t.arange(24).reshape((2, 3, 4))
     assert Flatten(start_dim=0)(x).shape == (24,)
