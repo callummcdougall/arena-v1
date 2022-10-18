@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 
 import plotly.express as px
@@ -313,8 +314,8 @@ for step in range(TOTAL_STEPS):
     loss = torch.square(y - y_pred).sum()
     if step % 100 == 0:
         print(f"{loss = :.2f}")
-        A_n = list(model.parameters())[0].detach().numpy()[:3].squeeze()
-        B_n = list(model.parameters())[0].detach().numpy()[:6].squeeze()
+        A_n = list(model.parameters())[0].detach().numpy().squeeze()[:NUM_FREQUENCIES]
+        B_n = list(model.parameters())[0].detach().numpy().squeeze()[NUM_FREQUENCIES:]
         a_0 = list(model.parameters())[1].item()
         y_pred_list.append(y_pred.cpu().detach().numpy())
         coeffs_list.append([a_0, A_n.copy(), B_n.copy()])
@@ -376,3 +377,12 @@ for step in range(TOTAL_STEPS):
     optimiser.zero_grad()
     loss.backward()
     optimiser.step()
+
+# %%
+
+from tqdm.notebook import tqdm_notebook
+import time
+
+for j in tqdm_notebook(range(5)):
+    for i in tqdm_notebook(range(100), leave=False):
+        time.sleep(0.01)
