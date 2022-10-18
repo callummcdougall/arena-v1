@@ -313,7 +313,7 @@ for step in range(TOTAL_STEPS):
     # Compute and print loss
     loss = torch.square(y - y_pred).sum()
     if step % 100 == 0:
-        print(f"{loss = :.2f}")
+        print(f"loss = {loss:.2f}")
         A_n = list(model.parameters())[0].detach().numpy().squeeze()[:NUM_FREQUENCIES]
         B_n = list(model.parameters())[0].detach().numpy().squeeze()[NUM_FREQUENCIES:]
         a_0 = list(model.parameters())[1].item()
