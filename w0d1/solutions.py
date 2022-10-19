@@ -157,6 +157,7 @@ for step in range(TOTAL_STEPS):
     
     # Compute and print loss
     loss = np.square(y - y_pred).sum()
+    
     if step % 100 == 0:
         print(f"{loss = :.2f}")
         coeffs_list.append([a_0, A_n.copy(), B_n.copy()])

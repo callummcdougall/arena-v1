@@ -55,6 +55,7 @@ def test_integrate_product(integrate_product):
     integrate_product_true = 0.5 * (x1 - x0)
     np.testing.assert_allclose(integrate_product_true, integrate_product_approx, atol=1e-10)
 
+# Widgets not working reliably for everyone
 def create_interactive_fourier_graph_widgets(calculate_fourier_series: Callable, func: Callable):
 
     label = wg.Label("Number of terms in Fourier series: ")
@@ -100,7 +101,7 @@ def create_interactive_fourier_graph(calculate_fourier_series: Callable, func: C
         currentvalue_prefix="Max frequency: ",
         pad_t=40,
         steps=[
-            dict(method="update", args=[{"visible": bool_list(i, 30)}])
+            dict(method="update", args=[{"visible": bool_list(i+1, 30)}], label=str(i))
             for i in range(30)
         ]
     )]
@@ -134,13 +135,24 @@ TARGET_FUNC = np.sin
 NUM_FREQUENCIES = 4
 TOTAL_STEPS = 4000
 LEARNING_RATE = 1e-6
-    
-def get_title_from_coeffs(a_0, A_n, B_n):
-    A_n_coeffs = " + ".join([f"{a_n:.2f}" + r"\cos{" + (str(n) if n>1 else "") + " x}" for (n, a_n) in enumerate(A_n, 1)])
-    B_n_coeffs = " + ".join([f"{b_n:.2f}" + r"\sin{" + (str(n) if n>1 else "") + " x}" for (n, b_n) in enumerate(B_n, 1)])
-    return r"$y = " + f"{0.5*a_0:.2f}" + " + " + A_n_coeffs + " + " + B_n_coeffs + "$"
 
-def visualise_fourier_coeff_convergence(x, y, y_pred_list, coeffs_list):
+# Latex doesn't render consistently on Plotly graph titles 
+# def get_title_from_coeffs(a_0, A_n, B_n):
+#     A_n_coeffs = " + ".join([f"{a_n:.2f}" + r"\cos{" + (str(n) if n>1 else "") + " x}" for (n, a_n) in enumerate(A_n, 1)])
+#     B_n_coeffs = " + ".join([f"{b_n:.2f}" + r"\sin{" + (str(n) if n>1 else "") + " x}" for (n, b_n) in enumerate(B_n, 1)])
+#     return r"$y = " + f"{0.5*a_0:.2f}" + " + " + A_n_coeffs + " + " + B_n_coeffs + "$"
+
+def get_title_from_coeffs(a_0, A_n, B_n):
+    A_n_coeffs = ""
+    B_n_coeffs = ""
+    for n, a_n in enumerate(A_n, 1):
+        A_n_coeffs += (" + " if a_n >= 0 else " - ") + f"{abs(a_n):.2f}" + " cos(" + (str(n) if n>1 else "") + "x)"
+    for n, b_n in enumerate(B_n, 1):
+        B_n_coeffs += (" + " if b_n >= 0 else " - ") + f"{abs(b_n):.2f}" + " sin(" + (str(n) if n>1 else "") + "x)"
+    return "y = " + f"{0.5*a_0:.2f}" + A_n_coeffs + B_n_coeffs
+
+# Widgets not working reliably for everyone
+def visualise_fourier_coeff_convergence_widgets(x, y, y_pred_list, coeffs_list):
 
     label = wg.Label("Number of steps: ")
 
@@ -168,3 +180,44 @@ def visualise_fourier_coeff_convergence(x, y, y_pred_list, coeffs_list):
     box_layout = wg.Layout(border="solid 1px black", padding="20px", margin="20px", width="80%")
 
     return wg.VBox([wg.HBox([label, slider], layout=box_layout), fig])
+
+
+def visualise_fourier_coeff_convergence(x, y, y_pred_list, coeffs_list):
+
+    fig = go.FigureWidget(
+        data = [go.Scatter(x=x, y=y, mode="lines", marker_color="blue")] + [
+            go.Scatter(x=x, y=y_pred_list[i], mode="lines", marker_color="rgba(100, 100, 100, 0.1)")
+            for i in range(len(y_pred_list))
+        ] + [
+            go.Scatter(x=x, y=y_pred_list[i], mode="lines", marker_color="red", visible=(i==0))
+            for i in range(len(y_pred_list))
+        ],
+        layout = go.Layout(
+            title_text=get_title_from_coeffs(*coeffs_list[0]),
+            template="simple_white", 
+            margin_t=100, 
+            showlegend=False,
+            yaxis_range=[y.min() - 0.5 * (y.max() - y.min()), y.max() + 0.5 * (y.max() - y.min())]
+        )
+    )
+    
+    sliders = [dict(
+        active=0, 
+        currentvalue_prefix="Num steps: ",
+        pad_t=40,
+        steps=[
+            dict(
+                method="update", 
+                args=[
+                    {"visible": [True] * len(coeffs_list) + bool_list(i, len(coeffs_list))},
+                    {"title": get_title_from_coeffs(*coeffs)},
+                ], 
+                label=str(100*i)
+            )
+            for i, coeffs in enumerate(coeffs_list, 1)
+        ]
+    )]
+    
+    fig.update_layout(sliders=sliders)
+    
+    return fig
