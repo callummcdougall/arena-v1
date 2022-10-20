@@ -82,13 +82,11 @@ def integrate_function(func: Callable, x0: float, x1: float, n_samples: int = 10
     return y.sum() * step_size
 
     
-def integrate_product(func1: Callable, func2: Callable, x0: float, x1: float):
+def integrate_product(func1: Callable, func2: Callable, x0: float, x1: float, n_samples: int = 1000):
     """
     Computes the integral of the function x -> func1(x) * func2(x).
-
-    For more, see this page: https://mathworld.wolfram.com/L2-InnerProduct.html
     """
-    return integrate_function(lambda x: func1(x) * func2(x), x0, x1)
+    return integrate_function(lambda x: func1(x) * func2(x), x0, x1, n_samples)
 
 
 def calculate_fourier_series(func: Callable, max_freq: int = 50):
