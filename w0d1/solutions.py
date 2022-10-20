@@ -373,9 +373,9 @@ for step in range(TOTAL_STEPS):
     
     # Backprop to compute gradients of coeffs with respect to loss
     # Update weights using gradient descent
-    optimiser.zero_grad()
     loss.backward()
     optimiser.step()
+    optimiser.zero_grad()
 
 # %%
 
