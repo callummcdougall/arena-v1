@@ -2,6 +2,7 @@ from w0d2.solutions import *
 from einops import rearrange
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from tqdm.notebook import tqdm_notebook
 import PIL
 
 class ConvNet(nn.Module):
@@ -228,3 +229,72 @@ def prepare_data(images: list[PIL.Image.Image]) -> t.Tensor:
     """
     x = t.stack([preprocess(img) for img in images], dim=0)  # type: ignore
     return x
+
+
+
+
+# ================================= ConvNet training & testing =================================
+
+epochs = 3
+loss_fn = nn.CrossEntropyLoss()
+batch_size = 128
+
+MODEL_FILENAME = "./w1d2_convnet_mnist.pt"
+device = "cuda" if t.cuda.is_available() else "cpu"
+
+trainset = datasets.MNIST(root="./data", train=True, transform=transform, download=True)
+trainloader = DataLoader(trainset, batch_size=64, shuffle=True)
+testset = datasets.MNIST(root="./data", train=False, transform=transform, download=True)
+testloader = DataLoader(testset, batch_size=64, shuffle=True)
+
+def train_convnet(trainloader: DataLoader, testloader: DataLoader, epochs: int, loss_fn: Callable) -> list:
+    """
+    Defines a ConvNet using our previous code, and trains it on the data in trainloader.
+    
+    Returns tuple of (loss_list, accuracy_list), where accuracy_list contains the fraction of accurate classifications on the test set, at the end of each epoch.
+    """
+    
+    model = ConvNet().to(device).train()
+    optimizer = t.optim.Adam(model.parameters())
+    loss_list = []
+    accuracy_list = []
+    
+    for epoch in tqdm_notebook(range(epochs)):
+        
+        for (x, y) in tqdm_notebook(trainloader, leave=False):
+            
+            x = x.to(device)
+            y = y.to(device)
+            
+            optimizer.zero_grad()
+            y_hat = model(x)
+            loss = loss_fn(y_hat, y)
+            loss.backward()
+            optimizer.step()
+            
+            loss_list.append(loss.item())
+        
+        with t.inference_mode():
+            
+            accuracy = 0
+            total = 0
+            
+            for (x, y) in testloader:
+
+                x = x.to(device)
+                y = y.to(device)
+
+                y_hat = model(x)
+                y_predictions = y_hat.argmax(1)
+                accuracy += (y_predictions == y).sum().item()
+                total += y.size(0)
+
+            accuracy_list.append(accuracy/total)
+            
+        print(f"Epoch {epoch+1}/{epochs}, train loss is {loss:.6f}, accuracy is {accuracy}/{total}")
+    
+    print(f"Saving model to: {MODEL_FILENAME}")
+    t.save(model, MODEL_FILENAME)
+    return loss_list, accuracy_list
+
+loss_list, accuracy_list = train_convnet(trainloader, testloader, epochs, loss_fn)
