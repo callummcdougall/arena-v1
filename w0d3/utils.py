@@ -33,6 +33,7 @@ def test_batchnorm2d_module(BatchNorm2d):
     assert isinstance(bn.running_mean, t.Tensor), f"running_mean has wrong type: {type(bn.running_mean)}"
     assert isinstance(bn.running_var, t.Tensor), f"running_var has wrong type: {type(bn.running_var)}"
     assert isinstance(bn.num_batches_tracked, t.Tensor), f"num_batches_tracked has wrong type: {type(bn.num_batches_tracked)}"
+    print("All tests in `test_batchnorm2d_module` passed!")
 
 def test_batchnorm2d_forward(BatchNorm2d):
     """For each channel, mean should be very close to 0 and std kinda close to 1 (because of eps)."""
@@ -44,6 +45,7 @@ def test_batchnorm2d_forward(BatchNorm2d):
     assert x.shape == out.shape
     t.testing.assert_close(out.mean(dim=(0, 2, 3)), t.zeros(num_features))
     t.testing.assert_close(out.std(dim=(0, 2, 3)), t.ones(num_features), atol=1e-3, rtol=1e-3)
+    print("All tests in `test_batchnorm2d_forward` passed!")
 
 def test_batchnorm2d_running_mean(BatchNorm2d):
     """Over repeated forward calls with the same data in train mode, the running mean should converge to the actual mean."""
@@ -62,3 +64,4 @@ def test_batchnorm2d_running_mean(BatchNorm2d):
     bn.eval()
     actual_eval_mean = bn(x).mean((0, 2, 3))
     t.testing.assert_close(actual_eval_mean, t.zeros(3))
+    print("All tests in `test_batchnorm2d_running_mean` passed!")
