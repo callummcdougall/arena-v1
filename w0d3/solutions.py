@@ -173,45 +173,44 @@ class ResNet34(nn.Module):
         self,
         n_blocks_per_group=[3, 4, 6, 3],
         out_features_per_group=[64, 128, 256, 512],
-        strides_per_group=[1, 2, 2, 2],
+        first_strides_per_group=[1, 2, 2, 2],
         n_classes=1000,
     ):
         super().__init__()
-        self.n_blocks_per_group = n_blocks_per_group
-        self.out_features_per_group = out_features_per_group
-        self.strides_per_group = strides_per_group
-        self.n_classes = n_classes
-        
-        first_in_features = 64
-        
-        self.in_features_per_group = [first_in_features] + out_features_per_group[:-1]
-        
-        self.conv1 = Conv2d(3, first_in_features, kernel_size=7, stride=2, padding=3)
-        self.bn1 = BatchNorm2d(first_in_features)
-        self.relu1 = ReLU()
-        self.maxpool1 = MaxPool2d(3, 2)
-        
-        # Again, this part could alternatively be done in a Sequential & list comprehension
-        for idx, (n_blocks, in_feats, out_feats, first_stride) in enumerate(zip(
-            n_blocks_per_group, self.in_features_per_group, out_features_per_group, strides_per_group
-        )):
-            self.add_module(f"layer{idx+1}", BlockGroup(n_blocks, in_feats, out_feats, first_stride))
-        
-        self.avgpool = AveragePool()
-        self.flatten = Flatten()
-        self.fc = Linear(out_features_per_group[-1], 1000)
+        in_feats0 = 64
+
+        self.in_layers = Sequential(
+            Conv2d(3, in_feats0, kernel_size=7, stride=2, padding=3),
+            BatchNorm2d(in_feats0),
+            ReLU(),
+            MaxPool2d(kernel_size=3, stride=2, padding=1),
+        )
+        all_in_feats = [in_feats0] + out_features_per_group[:-1]
+        self.residual_layers = Sequential(
+            *(
+                BlockGroup(*args)
+                for args in zip(
+                    n_blocks_per_group,
+                    all_in_feats,
+                    out_features_per_group,
+                    first_strides_per_group,
+                )
+            )
+        )
+        self.out_layers = Sequential(
+            AveragePool(),
+            Flatten(),
+            Linear(out_features_per_group[-1], n_classes),
+        )
 
     def forward(self, x: t.Tensor) -> t.Tensor:
         """
         x: shape (batch, channels, height, width)
-
         Return: shape (batch, n_classes)
         """
-        x = self.maxpool1(self.relu1(self.bn1(self.conv1(x))))
-        for idx in range(len(self.n_blocks_per_group)):
-            x = self._modules[f"layer{idx+1}"](x)
-        x = self.fc(self.flatten(self.avgpool(x)))
-        
+        x = self.in_layers(x)
+        x = self.residual_layers(x)
+        x = self.out_layers(x)
         return x
 
 
