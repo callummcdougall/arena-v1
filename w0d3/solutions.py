@@ -185,6 +185,7 @@ class ResNet34(nn.Module):
             ReLU(),
             MaxPool2d(kernel_size=3, stride=2, padding=1),
         )
+
         all_in_feats = [in_feats0] + out_features_per_group[:-1]
         self.residual_layers = Sequential(
             *(
@@ -197,6 +198,12 @@ class ResNet34(nn.Module):
                 )
             )
         )
+        # Alternative that uses `add_module`, in a way which makes the layer names line up:
+        # for idx, (n_blocks, in_feats, out_feats, first_stride) in enumerate(zip(
+        #     n_blocks_per_group, all_in_feats, out_features_per_group, strides_per_group
+        # )):
+        #     self.add_module(f"layer{idx+1}", BlockGroup(n_blocks, in_feats, out_feats, first_stride))
+
         self.out_layers = Sequential(
             AveragePool(),
             Flatten(),
