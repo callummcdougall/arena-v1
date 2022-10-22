@@ -226,7 +226,7 @@ def prepare_data(images: list[PIL.Image.Image]) -> t.Tensor:
     """
     Return: shape (batch=len(images), num_channels=3, height=224, width=224)
     """
-    x = t.stack([preprocess(img) for img in images], dim=0)  # type: ignore
+    x = t.stack([transform(img) for img in images], dim=0)  # type: ignore
     return x
 
 
