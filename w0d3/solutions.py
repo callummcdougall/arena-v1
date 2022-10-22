@@ -80,8 +80,8 @@ class BatchNorm2d(nn.Module):
             mean = t.mean(x, dim=(0, 2, 3), keepdim=True)
             var = t.var(x, dim=(0, 2, 3), unbiased=False, keepdim=True)
             # Updating running mean and variance, in line with PyTorch documentation
-            self.running_mean = (1 - self.momentum) * mean.squeeze() + self.momentum * self.running_mean
-            self.running_var = (1 - self.momentum) * var.squeeze() + self.momentum * self.running_var
+            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * mean.squeeze()
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * var.squeeze()
             self.num_batches_tracked += 1
         else:
             mean = rearrange(self.running_mean, "channels -> 1 channels 1 1")
