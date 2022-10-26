@@ -5,8 +5,29 @@ from tqdm.auto import tqdm
 from typing import Optional
 import numpy as np
 import warnings
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from einops import repeat
 
 Arr = np.ndarray
+
+def visualize(dataloader):
+    (sample, sample_labels) = next(iter(dataloader))
+        
+    fig = make_subplots(
+        rows=2, cols=5,
+        horizontal_spacing=0.02, vertical_spacing=0.02,
+        subplot_titles=[str(label.item()) for label in sample_labels[:10]]
+    )
+    for row in range(2):
+        for col in range(5):
+            z = repeat((255 * (0.28 + 0.35*sample[5*row+col, 0])).numpy().astype(int), "h w -> h w 3")
+            fig.add_trace(go.Image(z=z), row=row+1, col=col+1)
+            
+    fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
+    fig.update_layout(margin=dict(t=50, b=0, r=20, l=20))
+
+    fig.show(config={'displayModeBar': False})
 
 def get_mnist(subsample: Optional[int] = None):
     """Return MNIST data using the provided Tensor class."""
