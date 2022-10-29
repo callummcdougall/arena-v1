@@ -6,7 +6,9 @@ def greedy_search(logits: t.Tensor) -> int:
 
     Return: the most likely token (as an integer)
     """
-    return logits.argmax().item()
+    out = logits.argmax().item()
+    assert isinstance(out, int)
+    return out
 
 def sample_basic(logits: t.Tensor) -> int:
     """
@@ -15,7 +17,9 @@ def sample_basic(logits: t.Tensor) -> int:
     Return: a sampled token
     """
     distribution = t.distributions.categorical.Categorical(logits=logits)
-    return distribution.sample().item()
+    out = distribution.sample().item()
+    assert isinstance(out, int)
+    return out
 
 def apply_temperature(logits: t.Tensor, temperature: float) -> t.Tensor:
     """
