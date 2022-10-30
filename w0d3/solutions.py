@@ -1,5 +1,7 @@
 from w0d2.solutions import *
 from einops import rearrange
+import torch as t
+from torch import nn
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm_notebook
@@ -39,7 +41,8 @@ class Sequential(nn.Module):
     def forward(self, x: t.Tensor) -> t.Tensor:
         """Chain each module together, with the output from one feeding into the next one."""
         for mod in self._modules.values():
-            x = mod(x)
+            if mod is not None:
+                x = mod(x)
         return x
 
 class BatchNorm2d(nn.Module):

@@ -1,6 +1,7 @@
 # %%
 
-from optparse import Option
+# ============================= IMPORTS =============================
+
 import os
 # This makes a certain kind of error message more legible
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -27,6 +28,10 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 assert str(device) == "cuda"
 
 # %%
+
+
+
+# ============================= TRANSFORMER ARCHITECTURE =============================
 
 @dataclass(frozen=True)
 class TransformerConfig:
@@ -202,35 +207,42 @@ class DecoderOnlyTransformer(nn.Module):
         return x
 # %%
 
+
+
+# ============================= REVERSED SEQUENCES =============================
+
 class ReverseDataset(Dataset):
-    def __init__(self, ndigit):
-        self.seq_len = ndigit
-        self.vocab_size = 10
-        self.size = 10 ** ndigit
+    def __init__(self, seq_len):
+        self.seq_len = seq_len
+        self.vocab_size = 10 # digits from 0 to 9 inclusive
+        self.size = 10 ** seq_len # so that each seq appears once in the dataset (in expectation)
 
     def __len__(self):
+        # This is what is returned when you call len(dataset)
+        # And it's what PyTorch uses to construct the dataset when initialised
         return self.size
 
     def __getitem__(self, idx):
-        x = t.randint(self.vocab_size, size=(self.seq_len,), dtype=t.long)
-        y = x.flip(-1)
-        return x, y
+        # Rather than randomising, could also generate every single sequence
+        seq = t.randint(self.vocab_size, size=(self.seq_len,), dtype=t.long)
+        seq_reversed = seq.flip(-1)
+        return seq, seq_reversed
 
-# create a dataset for 6-digit sequence reversals
-ndigit = 6
-train_dataset = ReverseDataset(ndigit=ndigit)
+# Create dataset for training
+seq_len = 6
+trainset = ReverseDataset(seq_len=seq_len)
 
 # %%
 batch_size = 1024
-train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
+trainloader = DataLoader(trainset, shuffle=True, batch_size=batch_size)
 
 # %%
 config = TransformerConfig(
     num_layers = 2,
     num_heads = 6,
-    vocab_size = train_dataset.vocab_size,
+    vocab_size = trainset.vocab_size,
     hidden_size = 96,
-    max_seq_len = train_dataset.seq_len,
+    max_seq_len = trainset.seq_len,
 )
 
 model = DecoderOnlyTransformer(config).to(device).train()
@@ -240,15 +252,15 @@ epochs = 2
 
 # %%
 
-def train(model, optimizer, loss_fn, train_loader, epochs, plot_loss=True):
+def train(model, optimizer, loss_fn, trainloader, epochs, dataset_name=None, plot_loss=True):
 
     loss_list = []
 
     for epoch in range(epochs):
         
-        progress_bar = tqdm_notebook(train_loader)
+        progress_bar = tqdm_notebook(trainloader)
         
-        for it, (x, y) in enumerate(progress_bar):
+        for (x, y) in progress_bar:
             x = x.to(device)
             y = y.to(device)
 
@@ -275,7 +287,7 @@ def train(model, optimizer, loss_fn, train_loader, epochs, plot_loss=True):
                 "x": "No. batches seen", 
                 "y": str(loss_fn).replace("()", "") # This gets a name like "CrossEntropyLoss" from the loss function
             }, 
-            title="Loss on ReversedDigits dataset"
+            title=f"Training loss on {dataset_name} dataset" if dataset_name is not None else "Training loss"
         )
         # This next bit of code plots vertical lines corresponding to the epochs
         if epochs > 1:
@@ -286,20 +298,29 @@ def train(model, optimizer, loss_fn, train_loader, epochs, plot_loss=True):
     return model
 # %%
 
-model = train(model, optimizer, loss_fn, train_loader, epochs)
+model = train(model, optimizer, loss_fn, trainloader, epochs, "ReversedDigits")
 # With this model and parameters, I found loss dropping to about 1.17 after second epoch
 
 # %%
 
 model.eval()
-x = t.tensor([[1, 2, 3, 4, 5, 6]]).to(device)
-logits = model(x)
-print("prediction:", logits.argmax(dim=-1))
-print("answer:", x.flip(-1))
+seq = t.randint(10, size=(6,), dtype=t.long, device=device)
+seq_reversed = seq.flip(-1)
+logits = model(seq)
+prediction = logits.argmax(dim=-1).squeeze()
+print("prediction:", prediction)
+print("answer:", seq_reversed)
+t.testing.assert_close(seq_reversed[-3:], prediction[-3:])
 # As expected, model is getting the first three digits wrong, but the last three incorrect (so attention masking is working)
 
 # %%
 
+
+
+
+# ============================= SHAKESPEARE =============================
+
+# Load the text data
 with open("100-0.txt", encoding="utf-8") as file:
     text = file.read()
     words = re.split(r"\b", text)
@@ -327,20 +348,22 @@ class WordsDataset(Dataset):
         return int(self.max_len * self.fraction)
 
     def __getitem__(self, idx):
+        # Given tokens (t_1, ..., t_n), we want to predict (t_2, ..., t_n+1)
+        # This is actually n separate instances of task "predict j+1th token from first j tokens", for 1<=j<=n
         x_and_y = self.tokens[idx: idx + self.seq_len + 1]
         x = x_and_y[:-1]
         y = x_and_y[1:]
         return x, y
 
 max_seq_len = 48
-train_dataset = WordsDataset(words=words, seq_len=max_seq_len, fraction=0.02)
+trainset = WordsDataset(words=words, seq_len=max_seq_len, fraction=0.02)
 
 batch_size = 32
-
-train_loader = DataLoader(train_dataset, shuffle=True, pin_memory=True, batch_size=batch_size)
+trainloader = DataLoader(trainset, shuffle=True, pin_memory=True, batch_size=batch_size)
 
 # Create a tokenizer, so I can do things like tokenizer.encode(initial_text) and tokenizer.decode(list_of_ids)
-# This is optional though, you could just use `self.words_to_token_idx` directly from dataset
+# Also using the `return_tensors` argument of the encode method, just like gpt's tokenizer does
+# This object is optional though, you could just use `self.words_to_token_idx` directly from dataset
 class WordsTokenizer():
     def __init__(self, wordsdataset: WordsDataset):
         self.words_to_token_idx = wordsdataset.words_to_token_idx
@@ -361,28 +384,28 @@ class WordsTokenizer():
     def decode(self, list_of_ids: Union[t.Tensor, list]) -> str:
         return ''.join([self.token_idx_to_words[int(token)] for token in list_of_ids])
 
-tokenizer = WordsTokenizer(train_dataset)
+tokenizer = WordsTokenizer(trainset)
 
 # %%
 config = TransformerConfig(
     num_layers = 8,
     num_heads = 8,
-    vocab_size = train_dataset.vocab_size,
+    vocab_size = trainset.vocab_size,
     hidden_size = 512,
-    max_seq_len = train_dataset.seq_len,
+    max_seq_len = trainset.seq_len,
     dropout = 0.1,
     layer_norm_epsilon = 1e-05
 )
 
 model = DecoderOnlyTransformer(config).to(device).train()
 loss_fn = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=6e-4)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
 epochs = 1
 
 # %%
 
-model = train(model, optimizer, loss_fn, train_loader, epochs)
-# With this model and parameters, I had loss down to about 2.5 by the end of the epoch
+model = train(model, optimizer, loss_fn, trainloader, epochs, "WordsDataset")
+# With this model and parameters, I had loss down to about 1.7 by the end of one epoch
 
 # %%
 
@@ -421,7 +444,7 @@ def sample_tokens(
     tokenizer: WordsTokenizer,
     initial_text: str,
     max_tokens_generated=30,
-    **kwargs
+    **kwargs # kwargs are for params like temperature, top_k, etc
 ) -> str:
     '''
     Sample tokens until the model outputs `tokenizer.eos_token_id` or the specified token limit is reached.
