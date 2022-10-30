@@ -248,7 +248,7 @@ epochs = 3
 loss_fn = nn.CrossEntropyLoss()
 batch_size = 128
 
-MODEL_FILENAME = "./w1d2_convnet_mnist.pt"
+MODEL_FILENAME = "./w0d3_convnet_mnist.pt"
 device = "cuda" if t.cuda.is_available() else "cpu"
 
 trainset = datasets.MNIST(root="./data", train=True, transform=transform, download=True)
