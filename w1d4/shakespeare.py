@@ -1,5 +1,6 @@
 # %%
 
+from optparse import Option
 import os
 # This makes a certain kind of error message more legible
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -17,7 +18,6 @@ from dataclasses import dataclass
 from einops import rearrange, reduce, repeat
 from fancy_einsum import einsum
 from typing import Optional, Callable, Any, List, Dict, Union
-import torchtyping
 from tqdm.notebook import tqdm_notebook
 from IPython.display import display
 import matplotlib.pyplot as plt
@@ -85,7 +85,7 @@ def multihead_masked_attention(Q, K, V, num_heads):
     k_idx = repeat(t.arange(seq_len), "seqK -> seqQ seqK", seqQ=seq_len)
     # Any index positions with q<k should be masked (this prevents tokens "reading info from the future")
     mask = (q_idx >= k_idx).to(device)
-    neg_inf = t.tensor(-1e4, dtype=attention_scores.dtype, device=device)
+    neg_inf = t.tensor(-1e6, dtype=attention_scores.dtype, device=device)
     attention_scores = t.where(mask, attention_scores, neg_inf)
 
     # Take softmax over the key dimension (i.e. each query index has a corresponding probability distribution over tokens in the sequence)
@@ -104,26 +104,26 @@ class MultiheadMaskedAttention(nn.Module):
     W_QKV: nn.Linear
     W_O: nn.Linear
 
-    def __init__(self, embedding_dim: int, num_heads: int, head_size: Optional[int] = None):
+    def __init__(self, hidden_size: int, num_heads: int, head_size: Optional[int] = None):
         """
-        Adding option to override head_size (defaults to embedding_dim / num_heads otherwise)
+        Adding option to override head_size (defaults to hidden_size / num_heads otherwise)
         """
         super().__init__()
-        self.embedding_dim = embedding_dim
-        assert embedding_dim % num_heads == 0
+        self.hidden_size = hidden_size
+        assert hidden_size % num_heads == 0
         self.num_heads = num_heads
-        self.head_size = embedding_dim // num_heads if head_size is None else head_size
+        self.head_size = hidden_size // num_heads if head_size is None else head_size
         
         # Note that these weight matrices are usually called projections and defined as linear layers without bias, but they are 
         # still implemented with bias in some papers.
-        self.W_QKV = nn.Linear(embedding_dim, 3*num_heads*self.head_size)
-        self.W_O = nn.Linear(num_heads*self.head_size, embedding_dim)
+        self.W_QKV = nn.Linear(hidden_size, 3*num_heads*self.head_size)
+        self.W_O = nn.Linear(num_heads*self.head_size, hidden_size)
 
     def forward(self, x: t.Tensor) -> t.Tensor:
         """
-        x: shape (batch, seq, embedding_dim)
+        x: shape (batch, seq, hidden_size)
 
-        Return: shape (batch, seq, embedding_dim)
+        Return: shape (batch, seq, hidden_size)
         """
         # Computationally faster to apply W_QKV on x before splitting
         QKV = self.W_QKV(x)
@@ -206,7 +206,7 @@ class ReverseDataset(Dataset):
     def __init__(self, ndigit):
         self.seq_len = ndigit
         self.vocab_size = 10
-        self.size = 10 ** self.seq_len
+        self.size = 10 ** ndigit
 
     def __len__(self):
         return self.size
@@ -235,7 +235,7 @@ config = TransformerConfig(
 
 model = DecoderOnlyTransformer(config).to(device).train()
 loss_fn = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=6e-4)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
 epochs = 2
 
 # %%
@@ -339,16 +339,24 @@ batch_size = 32
 
 train_loader = DataLoader(train_dataset, shuffle=True, pin_memory=True, batch_size=batch_size)
 
-# Create a tokenizer, so I can do things like tokenizer(string_list) and tokenizer.decode(id_list)
+# Create a tokenizer, so I can do things like tokenizer.encode(initial_text) and tokenizer.decode(list_of_ids)
 # This is optional though, you could just use `self.words_to_token_idx` directly from dataset
 class WordsTokenizer():
     def __init__(self, wordsdataset: WordsDataset):
         self.words_to_token_idx = wordsdataset.words_to_token_idx
         self.token_idx_to_words = wordsdataset.token_idx_to_words
 
-    def __call__(self, initial_text: str) -> t.Tensor:
+    def encode(self, initial_text: str, return_tensors: Optional[str] = None) -> Union[list, np.ndarray, t.Tensor]:
         list_of_strings = [s for s in re.split(r"\b", initial_text) if len(s) > 0]
-        return t.tensor([self.words_to_token_idx[s] for s in list_of_strings]).to(device, t.long)
+        tensors_list = [self.words_to_token_idx[s] for s in list_of_strings]
+        if return_tensors is None:
+            return tensors_list
+        elif return_tensors == "pt":
+            return t.tensor(tensors_list)
+        elif return_tensors == "np":
+            return np.array(tensors_list)
+        else:
+            raise Exception("Unexpected value for `return_tensors`.")
 
     def decode(self, list_of_ids: Union[t.Tensor, list]) -> str:
         return ''.join([self.token_idx_to_words[int(token)] for token in list_of_ids])
@@ -422,7 +430,7 @@ def sample_tokens(
     '''
     # Note - an alternative to model.eval() is to use the @t.inference_mode() decorator for this whole function.
     model.eval()
-    input_ids: list = list(tokenizer(initial_text))
+    input_ids: list = tokenizer.encode(initial_text) # type: ignore
     generated = []
     for _ in range(max_tokens_generated):
         new_input_ids = t.tensor(input_ids + generated, dtype=t.long, device=device)
@@ -430,6 +438,8 @@ def sample_tokens(
         logits = model(new_input_ids_window)[0, -1]
         new_token = apply_sampling_methods(new_input_ids, logits, **kwargs)
         generated.append(new_token)
+        if new_token == getattr(tokenizer, "eos_token_id", None):
+            break
     return tokenizer.decode(input_ids + generated)
 
 # Note, some initial text strings might not work because they weren't present in the text you used for training
