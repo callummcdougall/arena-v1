@@ -23,6 +23,7 @@ from tqdm.notebook import tqdm_notebook
 from IPython.display import display
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
+import torchinfo
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 assert str(device) == "cuda"
@@ -183,6 +184,7 @@ class DecoderOnlyTransformer(nn.Module):
         self.ln = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_epsilon)
 
         # Function to print a dataframe visualising parameter count (this can be omitted, but it's pretty useful!)
+        # You can alternatively use `torchinfo.summary(self, input_data=input_data)`
         if config.print_param_count:
             print(f"Total params = {sum([param.numel() for param in self.parameters()])}")
             with pd.option_context("display.max_rows", 1000):
@@ -191,7 +193,6 @@ class DecoderOnlyTransformer(nn.Module):
                     for name, param in self.named_parameters()
                 ])
                 display(df.style.background_gradient(cmap="viridis", subset=["num params"], gmap=np.log(df["num params"])))
-
         
     def forward(self, x: t.Tensor) -> t.Tensor:
         # If x has no batch dimension, give it one (this means the transformer can also be run on 1D inputs with no batch dimension)
