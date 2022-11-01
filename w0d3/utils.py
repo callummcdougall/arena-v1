@@ -1,4 +1,3 @@
-# %%
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import torch as t
@@ -127,5 +126,3 @@ def print_param_count(*models, display_df=True, use_state_dict=True):
             display(s)
     else:
         return df
-
-# %%
