@@ -98,8 +98,8 @@ def print_param_count(*models, display_df=True, use_state_dict=True):
     df_list = []
     gmap_list = []
     for i, model in enumerate(models, start=1):
+        print(f"Model {i}, total params = {sum([param.numel() for name, param in model.named_parameters()])}")
         iterator = model.state_dict().items() if use_state_dict else model.named_parameters()
-        print(f"Model {i}, total params = {sum([param.numel() for name, param in iterator])}")
         df = pd.DataFrame([
             {f"name_{i}": name, f"shape_{i}": tuple(param.shape), f"num_params_{i}": param.numel()}
             for name, param in iterator
@@ -107,6 +107,7 @@ def print_param_count(*models, display_df=True, use_state_dict=True):
             {f"num_params_{i}": param.numel(), f"shape_{i}": tuple(param.shape), f"name_{i}": name}
             for name, param in iterator
         ])
+        display(df)
         df_list.append(df)
         gmap_list.append(np.log(df[f"num_params_{i}"]))
     df = df_list[0] if len(df_list) == 1 else pd.concat(df_list, axis=1).fillna(0)
