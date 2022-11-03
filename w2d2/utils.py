@@ -155,8 +155,6 @@ def print_param_count(*models, display_df=True, use_state_dict=False):
     else:
         return df
 
-
-
 def test_load_pretrained_weights(model, tokenizer):
 
     model.eval()
@@ -177,3 +175,10 @@ def test_load_pretrained_weights(model, tokenizer):
     print("Your model's top 10 predictions: ", next_tokens)
     assert " Washington" in next_tokens
     assert " Bush" in next_tokens
+
+def test_make_additive_attention_mask(make_additive_attention_mask):
+    from solutions_build_bert import make_additive_attention_mask as make_additive_attention_mask_soln
+    arr = t.randint(low=0, high=2, size=(3, 4))
+    expected = make_additive_attention_mask_soln(arr)
+    actual = make_additive_attention_mask(arr)
+    t.testing.assert_close(expected, actual)

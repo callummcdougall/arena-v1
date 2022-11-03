@@ -1,5 +1,4 @@
 # %%
-
 # ============================= IMPORTS =============================
 
 import os
@@ -19,8 +18,7 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 assert str(device) == "cuda"
 
 # %%
-
-# ============================= TRANSFORMER ARCHITECTURE =============================
+# ============================= CONFIG =============================
 
 @dataclass(frozen=True)
 class TransformerConfig:
@@ -35,7 +33,19 @@ class TransformerConfig:
     layer_norm_epsilon: float = 1e-05
     print_param_count: bool = True
 
+config = TransformerConfig(
+    num_layers = 12,
+    num_heads = 12,
+    vocab_size = 50257,
+    hidden_size = 768,
+    max_seq_len = 1024,
+    dropout = 0.1,
+    layer_norm_epsilon = 1e-05,
+    print_param_count = False
+)
+
 # %%
+# ============================= TRANSFORMER ARCHITECTURE =============================
 
 class MultiheadMaskedAttention(nn.Module):
     W_QKV: nn.Linear
@@ -102,8 +112,6 @@ class MultiheadMaskedAttention(nn.Module):
         return self.dropout2(out)
 
 
-# %%
-
 class MLP(nn.Module):
     
     def __init__(self, config):
@@ -116,7 +124,6 @@ class MLP(nn.Module):
     def forward(self, x: t.Tensor) -> t.Tensor:
         return self.dropout(self.fc2(self.gelu(self.fc1(x))))
 
-# %%
 
 class GPTBLock(nn.Module):
     
@@ -162,17 +169,9 @@ class GPT(nn.Module):
 
 
 # %%
+# ============================= INITIALISING MODELS =============================
 
-config = TransformerConfig(
-    num_layers = 12,
-    num_heads = 12,
-    vocab_size = 50257,
-    hidden_size = 768,
-    max_seq_len = 1024,
-    dropout = 0.1,
-    layer_norm_epsilon = 1e-05,
-    print_param_count = False
-)
+tokenizer = transformers.AutoTokenizer.from_pretrained("gpt2")
 
 my_gpt = GPT(config).to(device).train()
 gpt = transformers.AutoModelForCausalLM.from_pretrained("gpt2").to(device).train()
@@ -180,6 +179,7 @@ gpt = transformers.AutoModelForCausalLM.from_pretrained("gpt2").to(device).train
 utils.print_param_count(my_gpt, gpt)
 
 # %%
+# ============================= LOADING WEIGHTS =============================
 
 def copy_weights(my_gpt: GPT, gpt) -> GPT:
     '''Copy over the weights of `gpt` to your gpt implementation.'''
@@ -193,23 +193,23 @@ def copy_weights(my_gpt: GPT, gpt) -> GPT:
     assert len(my_gpt_dict) == len(gpt_dict), "Number of layers is wrong. Have you done the prev step correctly?"
     
     # Initialise an empty dictionary to store the correct key-value pairs
-    state_dict_to_load = {}
+    state_dict = {}
     
     for (my_param_name, my_param), (name, param) in zip(my_gpt_dict.items(), gpt_dict.items()):
         # Sometimes params are transposed
         if len(my_param.shape) == 2 and my_param.shape == param.T.shape:
-            state_dict_to_load[my_param_name] = param.T
+            state_dict[my_param_name] = param.T
             # print(f"Copied params.T: {name} -> {my_param_name}")
         elif my_param.shape == param.shape:
-            state_dict_to_load[my_param_name] = param
+            state_dict[my_param_name] = param
             # print(f"Copied params:   {name} -> {my_param_name}")
         else:
             raise Exception(f"Parameter shapes don't match: {my_param.shape} vs {param.shape}")
 
-    if set(state_dict_to_load.keys()) != set(my_gpt.state_dict().keys()):
+    if set(state_dict.keys()) != set(my_gpt.state_dict().keys()):
         raise Exception("State dicts don't match.")
     
-    my_gpt.load_state_dict(state_dict_to_load)
+    my_gpt.load_state_dict(state_dict)
     
     return my_gpt
 
@@ -217,13 +217,11 @@ my_gpt = copy_weights(my_gpt, gpt)
 
 # %%
 
-tokenizer = transformers.AutoTokenizer.from_pretrained("gpt2")
+
 
 # %%
+# ============================= TESTING =============================
 
 utils.test_load_pretrained_weights(gpt, tokenizer)
 
-# %%
-
 utils.test_load_pretrained_weights(my_gpt, tokenizer)
-# %%
