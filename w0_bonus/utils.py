@@ -213,13 +213,8 @@ def test_multiply_float(Tensor, multiply):
     np.testing.assert_allclose(c.array, expected)
     print("All tests in `test_multiply_float` passed!")
 
-def test_sum(wrap_forward_fn, Tensor):
+def test_sum(Tensor):
     # This tests keyword arguments
-    def _sum(x: Arr, dim=None, keepdim=False) -> Arr:
-        """Like torch.sum, calling np.sum internally."""
-        return np.sum(x, axis=dim, keepdims=keepdim)
-    global sum
-    sum = wrap_forward_fn(_sum)
     a = Tensor(np.array([[0.0, 1.0], [2.0, 3.0]]), requires_grad=True)
     assert a.sum(0).shape == (2,)
     assert a.sum(0, True).shape == (1, 2)
@@ -231,16 +226,12 @@ class Node:
     def __init__(self, *children):
         self.children = list(children)
 
-
-def get_children(node: Node) -> list[Node]:
-    return node.children
-
 def test_topological_sort_linked_list(topological_sort):
     z = Node()
     y = Node(z)
     x = Node(y)
     expected = [z, y, x]
-    for e, a in zip(expected, topological_sort(x, get_children)):
+    for e, a in zip(expected, topological_sort(x)):
         assert e is a
     print("All tests in `test_topological_sort_linked_list` passed!")
 
@@ -250,7 +241,7 @@ def test_topological_sort_branching(topological_sort):
     x = Node(y, z)
     w = Node(x)
     name_lookup = {w: "w", x: "x", y: "y", z: "z"}
-    out = "".join([name_lookup[n] for n in topological_sort(w, get_children)])
+    out = "".join([name_lookup[n] for n in topological_sort(w)])
     assert out == "zyxw" or out == "yzxw"
     print("All tests in `test_topological_sort_branching` passed!")
 
@@ -260,7 +251,7 @@ def test_topological_sort_rejoining(topological_sort):
     x = Node(y)
     w = Node(z, x)
     name_lookup = {w: "w", x: "x", y: "y", z: "z"}
-    out = "".join([name_lookup[n] for n in topological_sort(w, get_children)])
+    out = "".join([name_lookup[n] for n in topological_sort(w)])
     assert out == "zyxw"
     print("All tests in `test_topological_sort_rejoining` passed!")
 
@@ -270,12 +261,57 @@ def test_topological_sort_cyclic(topological_sort):
     x = Node(y)
     z.children = [x]
     try:
-        topological_sort(x, get_children)
+        topological_sort(x)
     except:
         assert True
     else:
         assert False
     print("All tests in `test_topological_sort_cyclic` passed!")
+
+def test_backprop(Tensor):
+    a = Tensor([np.e, np.e**np.e], requires_grad=True)
+    b = a.log()
+    c = b.log()
+    c.backward(end_grad=np.array([1.0, 1.0]))
+    assert c.grad is None
+    assert b.grad is None
+    assert a.grad is not None
+    assert np.allclose(a.grad.array, 1 / b.array / a.array)
+    print("All tests in `test_backprop` passed!")
+
+
+def test_backprop_branching(Tensor):
+    a = Tensor([1, 2, 3], requires_grad=True)
+    b = Tensor([1, 2, 3], requires_grad=True)
+    c = a * b
+    c.backward(end_grad=np.array([1.0, 1.0, 1.0]))
+    assert np.allclose(a.grad.array, b.array)
+    assert np.allclose(b.grad.array, a.array)
+    print("All tests in `test_backprop_branching` passed!")
+
+
+def test_backprop_requires_grad_false(Tensor):
+    a = Tensor([1, 2, 3], requires_grad=True)
+    b = Tensor([1, 2, 3], requires_grad=False)
+    c = a * b
+    c.backward(end_grad=np.array([1.0, 1.0, 1.0]))
+    assert np.allclose(a.grad.array, b.array)
+    assert b.grad is None
+    print("All tests in `test_backprop_requires_grad_false` passed!")
+
+
+def test_backprop_float_arg(Tensor):
+    a = Tensor([1, 2, 3], requires_grad=True)
+    b = 2
+    c = a * b
+    d = 2
+    e = d * c
+    e.backward(end_grad=np.array([1.0, 1.0, 1.0]))
+    assert e.grad is None
+    assert c.grad is None
+    assert a.grad is not None
+    assert np.allclose(a.grad.array, np.array([4.0, 4.0, 4.0]))
+    print("All tests in `test_backprop_float_arg` passed!")
 
 def test_negative_back(Tensor):
     a = Tensor([-1, 0, 1], requires_grad=True)
@@ -369,6 +405,12 @@ def test_sum_dim_none(Tensor):
     assert a.grad.shape == a.shape
     assert (a.grad.array == 4).all()
     print("All tests in `test_sum_dim_none` passed!")
+
+def test_coerce_index(coerce_index, Tensor):
+    assert coerce_index(1) == 1
+    assert coerce_index((1, 2)) == (1, 2)
+    assert coerce_index((Tensor(1), Tensor(2))) == (1, 2)
+    print("All tests in `test_coerce_index` passed!")
 
 def test_getitem_int(Tensor):
     a = Tensor([[0, 1, 2], [3, 4, 5]], requires_grad=True)

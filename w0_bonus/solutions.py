@@ -1,22 +1,9 @@
-import torch as t
-from torch import nn
-import torch.nn.functional as F
-from torchvision import datasets, models, transforms
-
 import re
-import warnings
 import numpy as np
-import pandas as pd
-
-import os
-import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Iterator, Optional, Protocol, Union
-# from matplotlib import pyplot as plt
+from typing import Any, Callable, Iterator, Optional, Union
 
-MAIN = __name__ == "__main__"
-IS_CI = os.getenv("IS_CI")
 Arr = np.ndarray
 grad_tracking_enabled = True
 
@@ -33,7 +20,6 @@ class Recipe:
     "Keyword arguments passed to func. To keep things simple today, we aren't going to backpropagate with respect to these."
     parents: dict[int, "Tensor"]
     "Map from positional argument index to the Tensor at that position, in order to be able to pass gradients back along the computational graph."
-
 class Tensor:
     """
     A drop-in replacement for torch.Tensor supporting a subset of features.
@@ -176,7 +162,6 @@ class Tensor:
         if np.array(self.shape).prod() != 1:
             raise RuntimeError("bool value of Tensor with more than one value is ambiguous")
         return bool(self.item())
-
 
 def empty(*shape: int) -> Tensor:
     """Like torch.empty."""
@@ -350,6 +335,7 @@ def wrap_forward_fn(numpy_func: Callable, is_differentiable=True) -> Callable:
     return tensor_func
 
 
+# %%  
 class Node:
     def __init__(self, *children):
         self.children = list(children)
@@ -357,39 +343,44 @@ class Node:
 def get_children(node: Node) -> list[Node]:
     return node.children
 
-        
-def topological_sort(node: Node, get_children_fn: Callable) -> list[Any]:
+def topological_sort(node: Node) -> list[Node]:
     """
     Return a list of node's descendants in reverse topological order from future to past.
     
     Should raise an error if the graph with `node` as root is not in fact acyclic.
     """
     
-    perm: set[Node] = set() # stores the nodes which have already been added to `result`
-    temp: set[Node] = set() # keeps track of previously visited nodes (to detect cyclicity)
-    result: list[Node] = [] # stores the list of nodes to be returned (in reverse topological order)
+    # Note, you can also add `perm`, which stores contents of `results` in a set - this is computationally faster
 
-    # 
+    result: list[Node] = [] # stores the list of nodes to be returned (in reverse topological order)
+    temp: set[Node] = set() # keeps track of previously visited nodes (to detect cyclicity)
+
     def visit(cur: Node):
         """
         Recursive function which visits all the children of the current node
         """
-        if cur in perm:
+        if cur in result:
             return
         if cur in temp:
             raise ValueError("Not a DAG!")
         temp.add(cur)
 
-        for next in get_children_fn(cur):
+        for next in cur.children:
             visit(next)
 
         temp.remove(cur)
-        perm.add(cur)
         result.append(cur)
 
     visit(node)
     return result
+# %%
 
+a = Node()
+b = Node(a)
+c = Node(b)
+topological_sort(c)
+
+# %%
 
 
 def sorted_computational_graph(node: Tensor) -> list[Tensor]:
@@ -471,6 +462,7 @@ eq = wrap_forward_fn(np.equal, is_differentiable=False)
 
 def negative_back(grad_out: Arr, out: Arr, x: Arr) -> Arr:
     """Backward function for f(x) = -x elementwise."""
+    # just doing return -grad_out is also fine, I think (because no broadcasting is ever involved here)
     return np.full_like(x, -1) * grad_out
 
 negative = wrap_forward_fn(np.negative)
