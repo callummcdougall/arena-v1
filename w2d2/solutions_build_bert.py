@@ -165,7 +165,7 @@ class BertCommon(nn.Module):
 
 
 
-        # Function to print a dataframe visualising parameter count (this can be omitted, but it's pretty useful!)
+        # Function to print a Dframe visualising parameter count (this can be omitted, but it's pretty useful!)
         if config.print_param_count:
             utils.print_param_count(self)
             
