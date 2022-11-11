@@ -4,7 +4,7 @@ st.set_page_config(layout="wide")
 
 import platform
 is_local = (platform.processor() != "")
-rootdir = "" if is_local else "ch0/"
+rootdir = "" if is_local else "streamlit/ch0/"
 
 st.markdown("""
 <style>

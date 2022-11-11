@@ -1,7 +1,7 @@
 import streamlit as st
 import platform
 is_local = (platform.processor() != "")
-rootdir = "" if is_local else "ch1/"
+rootdir = "" if is_local else "streamlit/ch1/"
 
 st.set_page_config(layout="wide")
 

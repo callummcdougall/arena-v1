@@ -6,7 +6,7 @@ import json
 
 import platform
 is_local = (platform.processor() != "")
-rootdir = "" if is_local else "ch2/"
+rootdir = "" if is_local else "streamlit/ch2/"
 
 def read_from_html(filename):
     filename = rootdir + f"images/{filename}.html"

@@ -2,7 +2,7 @@ import streamlit as st
 
 import platform
 is_local = (platform.processor() != "")
-rootdir = "" if is_local else "ch0/"
+rootdir = "" if is_local else "streamlit/ch0/"
 
 # code > span.string {
 #     color: red !important;
