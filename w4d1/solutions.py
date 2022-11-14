@@ -20,6 +20,8 @@ assert str(device) == "cuda:0"
 import w0d2_solutions
 import w0d3_solutions
 
+MAIN = (__name__ == "__main__")
+
 # %%
 
 def conv_transpose1d_minimal(x: t.Tensor, weights: t.Tensor) -> t.Tensor:
@@ -352,8 +354,11 @@ celeba_mini_config = dict(
     n_layers = 4,
 )
 
-netG = Generator(**celeba_mini_config).to(device).train()
-netD = Discriminator(**celeba_mini_config).to(device).train()
+netG_celeb_mini = Generator(**celeba_mini_config).to(device).train()
+netD_celeb_mini = Discriminator(**celeba_mini_config).to(device).train()
+
+netG_celeb = Generator(**celeba_config).to(device).train()
+netD_celeb = Discriminator(**celeba_config).to(device).train()
 
 def initialize_weights(model) -> None:
     for name, param in model.named_parameters():
@@ -364,10 +369,9 @@ def initialize_weights(model) -> None:
         elif "bias" in name and "batchnorm" in name:
             nn.init.constant_(param.data, 0.0)
 
-initialize_weights(netG)
-initialize_weights(netD)
-
-utils.display_generator_output(netG)
+if MAIN:
+    initialize_weights(netG_celeb)
+    utils.display_generator_output(netG_celeb)
 
 # %%
 
@@ -381,6 +385,8 @@ utils.display_generator_output(netG)
 
 
 # %%
+
+# ======================== CELEB_A ========================
 
 image_size = 64
 batch_size = 8
@@ -405,6 +411,8 @@ import utils
 import importlib
 importlib.reload(utils)
 utils.show_images(trainset, rows=3, cols=5)
+
+# ======================== MNIST ========================
 
 # batch_size = 64
 # img_size = 24
