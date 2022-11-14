@@ -35,29 +35,29 @@ def show_images(data, rows=3, cols=5):
     # img = rearrange(img, "b c h w -> b h w c")
     # px.imshow(img, facet_col=0, facet_col_wrap=cols).show()
 
-@t.inference_mode()
 def display_generator_output(netG, latent_dim_size, rows=2, cols=5):
 
-    netG.eval()
-    device = next(netG.parameters()).device
-    t.manual_seed(0)
     with t.inference_mode():
-        noise = t.randn(rows*cols, latent_dim_size).to(device)
-        img = netG(noise)
-        print(noise.shape, img.shape)
-        img_min = img.min(-1, True).values.min(-2, True).values
-        img_max = img.max(-1, True).values.max(-2, True).values
-        img = (img - img_min) / (img_max - img_min)
-        img = pad_width_height(img)
-        img = rearrange(img, "(b1 b2) c h w -> (b1 h) (b2 w) c", b1=rows)
-    if len(img.shape) == 3:
-        img = img.squeeze()
-    (px.imshow(img, color_continuous_scale="greys_r")
-     .update_layout(margin=dict.fromkeys("tblr", 20))
-     .update_xaxes(showticklabels=False)
-     .update_yaxes(showticklabels=False)
-    ).show()
-    netG.train()
+        netG.eval()
+        device = next(netG.parameters()).device
+        t.manual_seed(0)
+        with t.inference_mode():
+            noise = t.randn(rows*cols, latent_dim_size).to(device)
+            img = netG(noise)
+            print(noise.shape, img.shape)
+            img_min = img.min(-1, True).values.min(-2, True).values
+            img_max = img.max(-1, True).values.max(-2, True).values
+            img = (img - img_min) / (img_max - img_min)
+            img = pad_width_height(img)
+            img = rearrange(img, "(b1 b2) c h w -> (b1 h) (b2 w) c", b1=rows)
+        if len(img.shape) == 3:
+            img = img.squeeze()
+        (px.imshow(img, color_continuous_scale="greys_r")
+        .update_layout(margin=dict.fromkeys("tblr", 20))
+        .update_xaxes(showticklabels=False)
+        .update_yaxes(showticklabels=False)
+        ).show()
+        netG.train()
 
 def test_conv_transpose1d_minimal(conv_transpose1d_minimal, n_tests=20):
     import numpy as np
