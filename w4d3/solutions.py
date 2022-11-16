@@ -349,8 +349,8 @@ if MAIN:
     # Constructing latent dim data by making two of the dimensions vary independently between 0 and 1
     latent_dim_data = t.zeros((n_points, n_points, latent_dim_size), device=device)
     x = t.linspace(-1, 1, n_points)
-    latent_dim_data[:, :, 1] = x.unsqueeze(0)
-    latent_dim_data[:, :, 2] = x.unsqueeze(1)
+    latent_dim_data[:, :, 4] = x.unsqueeze(0)
+    latent_dim_data[:, :, 3] = x.unsqueeze(1)
     # Rearranging so we have a single batch dimension
     latent_dim_data = rearrange(latent_dim_data, "b1 b2 latent_dim -> (b1 b2) latent_dim")
 
