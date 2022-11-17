@@ -92,9 +92,9 @@ class AutoencoderLarge(nn.Module):
         super().__init__()
         self.latent_dim_size = latent_dim_size
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 4, stride=2, padding=1),
+            nn.Conv2d(1, 16, 4, stride=2, padding=0),
             nn.ReLU(),
-            nn.Conv2d(16, 32, 4, stride=2, padding=1),
+            nn.Conv2d(16, 32, 4, stride=2, padding=0),
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(7 * 7 * 32, 128),
