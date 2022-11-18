@@ -12,6 +12,7 @@ import numpy as np
 import plotly.express as px
 import torchinfo
 import time
+import wandb
 
 MAIN = __name__ == "__main__"
 
@@ -92,9 +93,9 @@ class AutoencoderLarge(nn.Module):
         super().__init__()
         self.latent_dim_size = latent_dim_size
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 4, stride=2, padding=0),
+            nn.Conv2d(1, 16, 4, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(16, 32, 4, stride=2, padding=0),
+            nn.Conv2d(16, 32, 4, stride=2, padding=1),
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(7 * 7 * 32, 128),
@@ -117,7 +118,6 @@ class AutoencoderLarge(nn.Module):
         x = self.decoder(x)
         return x
 
-
 if MAIN:
     img_shape = (28, 28)
     batch_size = 128
@@ -125,12 +125,13 @@ if MAIN:
     model = AutoencoderLarge(latent_dim_size=5)
 
     optimizer = optim.Adam(model.parameters())
+
     torchinfo.summary(model, input_data=trainset[0][0].unsqueeze(0))
 
 
 # %%
 
-def show_images(model, data_to_plot):
+def show_images(model, data_to_plot, return_arr=False):
 
     device = next(model.parameters()).device
     data_to_plot = data_to_plot.to(device)
@@ -140,6 +141,10 @@ def show_images(model, data_to_plot):
 
     both = t.concat((data_to_plot.squeeze(), output.squeeze()), dim=0).cpu().detach().numpy()
     both = np.clip((both * 0.3081) + 0.1307, 0, 1)
+
+    if return_arr:
+        arr = rearrange(both, "(b1 b2) h w -> (b1 h) (b2 w) 1", b1=2)
+        return arr
 
     fig = px.imshow(both, facet_col=0, facet_col_wrap=10, color_continuous_scale="greys_r")
     fig.update_layout(coloraxis_showscale=False).update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
@@ -151,20 +156,27 @@ def show_images(model, data_to_plot):
 
 # %%
 
-def train_autoencoder(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_size, print_output_interval):
+def train_autoencoder(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_size, print_output_interval=15, use_wandb=True):
 
     t_last = time.time()
+    examples_seen = 0
 
     model.to(device).train()
     data_to_plot = data_to_plot.to(device)
 
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
 
+    if use_wandb:
+        wandb.init()
+        wandb.watch(model, log="all", log_freq=15)
+
     for epoch in range(epochs):
 
         progress_bar = tqdm(trainloader)
 
         for img, label in progress_bar:
+
+            examples_seen += img.size(0)
 
             img = img.to(device)
             img_reconstructed = model(img)
@@ -178,16 +190,27 @@ def train_autoencoder(model, optimizer, loss_fn, trainset, data_to_plot, epochs,
 
             progress_bar.set_description(f"Epoch {epoch+1}, Loss = {loss.item():>10.3f}")
 
+            if use_wandb:
+                wandb.log({"loss": loss.item()}, step=examples_seen)
+            
             if time.time() - t_last > print_output_interval:
                 t_last += print_output_interval
                 with t.inference_mode():
-                    show_images(model, data_to_plot)
+                    if use_wandb:
+                        arr = show_images(model, data_to_plot, return_arr=True)
+                        images = wandb.Image(arr, caption="Top: original, Bottom: reconstructed")
+                        wandb.log({"images": [images, images]}, step=examples_seen)
+                    else:
+                        show_images(model, data_to_plot, return_arr=False)
+
+    wandb.run.save()
+    wandb.finish()
 
     return model
 
 # %%
 if MAIN:
-    model = train_autoencoder(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_size, print_output_interval)
+    model = train_autoencoder(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_size, print_output_interval=10)
 
 # %%
 if MAIN:
@@ -284,7 +307,9 @@ class VAE(nn.Module):
     def forward(self, x: t.Tensor) -> t.Tensor:
         mu, logsigma = self.encoder(x)
         sigma = t.exp(logsigma)
-        z = mu + sigma * t.randn(self.latent_dim_size).to(device)
+        # z = t.randn(self.latent_dim_size).to(device)
+        z = t.randn_like(mu)
+        z = mu + sigma * z
         x_reconstructed = self.decoder(z)
         return x_reconstructed, mu, logsigma
 
@@ -301,10 +326,15 @@ if MAIN:
 
 # %%
 
-def train_vae(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_size, print_output_interval):
+def plot_loss(loss_fns_dict):
+    df = pd.DataFrame(loss_fns_dict)
+    fig = px.line(df, template="simple_white")
+    fig.show()
+
+def train_vae(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_size, beta=0.1, print_output_interval=15):
 
     t_last = time.time()
-
+    loss_fns = {"reconstruction": [],"kl_div": []}
     model.to(device).train()
     data_to_plot = data_to_plot.to(device)
 
@@ -320,7 +350,7 @@ def train_vae(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_s
             img_reconstructed, mu, logsigma = model(img)
 
             reconstruction_loss = loss_fn(img, img_reconstructed)
-            kl_div_loss = ( 0.5 * (mu ** 2 + t.exp(2 * logsigma) - 1) - logsigma ).mean() * 0.1
+            kl_div_loss = ( 0.5 * (mu ** 2 + t.exp(2 * logsigma) - 1) - logsigma ).mean() * beta
 
             loss = reconstruction_loss + kl_div_loss
             loss.backward()
@@ -329,12 +359,14 @@ def train_vae(model, optimizer, loss_fn, trainset, data_to_plot, epochs, batch_s
             optimizer.zero_grad()
 
             progress_bar.set_description(f"Epoch {epoch+1}, reconstruction_loss = {reconstruction_loss.item():>10.3f}, kl_div_loss = {kl_div_loss.item():>10.3f}, mean={mu.mean():>10.3f}, std={t.exp(logsigma).mean():>10.3f}")
+            loss_fns["reconstruction"].append(reconstruction_loss.item())
+            loss_fns["kl_div"].append(kl_div_loss.item())
 
             if time.time() - t_last > print_output_interval:
                 t_last += print_output_interval
                 with t.inference_mode():
                     show_images(model, data_to_plot)
-
+                    plot_loss(loss_fns)
     return model
 
 if MAIN:

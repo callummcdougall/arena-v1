@@ -10,13 +10,13 @@ from collections import OrderedDict
 from tqdm import tqdm
 from torchvision import transforms
 from torch.utils.data import DataLoader
-import utils
 import wandb
 import time
 
 device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 assert str(device) == "cuda:0"
 
+import utils
 import w0d2_solutions
 import w0d3_solutions
 
@@ -369,21 +369,6 @@ def initialize_weights(model) -> None:
         elif "bias" in name and "batchnorm" in name:
             nn.init.constant_(param.data, 0.0)
 
-if MAIN:
-    initialize_weights(netG_celeb)
-    utils.display_generator_output(netG_celeb, netG_celeb.latent_dim_size)
-
-# %%
-
-# arr = t.randn((5, 100)).to(device)
-# out = netG(arr)
-# print(f"Generator\n================\nInput shape: {arr.shape}\nOutput shape: {out.shape}\n")
-
-# arr = t.randn((5, 3, 64, 64)).to(device)
-# out = netD(arr)
-# print(f"Discriminator\n================\nInput shape: {arr.shape}\nOutput shape: {out.shape}")
-
-
 # %%
 
 # ======================== CELEB_A ========================
@@ -402,14 +387,12 @@ transform = transforms.Compose([
 
 trainset = datasets.ImageFolder(
     root=r"C:\Users\calsm\Documents\AI Alignment\ARENA\in_progress\transposed_convolutions\data",
+    # root=r"./data",
     transform=transform
 )
 
 trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True) # num_workers=2
 
-import utils
-import importlib
-importlib.reload(utils)
 utils.show_images(trainset, rows=3, cols=5)
 
 # ======================== MNIST ========================
@@ -443,14 +426,15 @@ def train_generator_discriminator(
     trainloader,
     epochs: int,
     max_epoch_duration: Optional[Union[int, float]] = None,
-    print_netG_output_interval: Optional[Union[int, float]] = None,
-    use_wandb: bool = False
+    log_netG_output_interval: Optional[Union[int, float]] = None,
+    use_wandb: bool = True
 ):
 
     # This code controls how we print output from our model at specified times, and controls early epoch termination.
     t0 = time.time()
+    n_examples_seen = 0
     if max_epoch_duration is None: max_epoch_duration = t.inf
-    if print_netG_output_interval is None: print_netG_output_interval = t.inf
+    if log_netG_output_interval is None: log_netG_output_interval = t.inf
     last_interval = 0 
 
     netG.train().to(device)
@@ -462,7 +446,7 @@ def train_generator_discriminator(
     for epoch in range(epochs):
         
         t0_epoch = time.time()
-        n_steps = 0
+        n_examples_seen_this_epoch = 0
         progress_bar = tqdm(trainloader)
 
         for img_real, label in progress_bar:
@@ -498,16 +482,19 @@ def train_generator_discriminator(
             optG.step()
 
             # Update progress bar
-
-            progress_bar.set_description(f"epoch={epoch}, steps={n_steps}, lossD={lossD.item():.4f}, lossG={lossG.item():.4f}")
-            n_steps += current_batch_size
+            progress_bar.set_description(f"epoch={epoch}, steps={n_examples_seen_this_epoch}/{len(trainloader)}, lossD={lossD.item():.4f}, lossG={lossG.item():.4f}")
+            n_examples_seen += current_batch_size
+            n_examples_seen_this_epoch += current_batch_size
             if use_wandb:
-                wandb.log(dict(lossD=lossD, lossG=lossG), steps=n_steps)
+                wandb.log(dict(lossD=lossD, lossG=lossG), step=n_examples_seen)
 
-            # Print output, if required
-            if time.time() - t0 > print_netG_output_interval * (last_interval + 1):
+            # Log output, if required
+            if time.time() - t0 > log_netG_output_interval * (last_interval + 1):
                 last_interval += 1
-                utils.display_generator_output(netG, netG.latent_dim_size, rows=2, cols=6)
+                if use_wandb:
+                    arrays = get_generator_output(netG) # shape (8, 64, 64, 3)
+                    images = [wandb.Image(arr) for arr in arrays]
+                    wandb.log({"images": images}, step=n_examples_seen)
             if time.time() - t0_epoch > max_epoch_duration:
                 break
 
@@ -526,6 +513,17 @@ def train_generator_discriminator(
         wandb.finish()
                 
     return netG, netD
+
+@t.inference_mode()
+def get_generator_output(netG, n_examples=8, rand_seed=0):
+    netG.eval()
+    device = next(netG.parameters()).device
+    t.manual_seed(rand_seed)
+    noise = t.randn(n_examples, netG.latent_dim_size).to(device)
+    arrays = rearrange(netG(noise), "b c h w -> b h w c").detach().cpu().numpy()
+    netG.train()
+    return arrays
+
 
 # %%
 
@@ -549,8 +547,8 @@ optG = t.optim.Adam(netG.parameters(), lr=lr, betas=betas)
 optD = t.optim.Adam(netD.parameters(), lr=lr, betas=betas)
 
 epochs = 3
-max_epoch_duration = 120
-print_netG_output_interval = 20
+max_epoch_duration = 240
+log_netG_output_interval = 10
 
 # %%
 
@@ -559,9 +557,9 @@ netG, netD = train_generator_discriminator(
     netD, 
     optG, 
     optD, 
-    trainloader, 
+    trainloader,
     epochs, 
     max_epoch_duration, 
-    print_netG_output_interval
+    log_netG_output_interval
 )
 # %%
