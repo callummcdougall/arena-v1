@@ -447,6 +447,7 @@ def train_generator_discriminator(
         
         t0_epoch = time.time()
         n_examples_seen_this_epoch = 0
+        n_batches_seen_this_epoch = 0
         progress_bar = tqdm(trainloader)
 
         for img_real, label in progress_bar:
@@ -482,9 +483,10 @@ def train_generator_discriminator(
             optG.step()
 
             # Update progress bar
-            progress_bar.set_description(f"epoch={epoch}, steps={n_examples_seen_this_epoch}/{len(trainloader)}, lossD={lossD.item():.4f}, lossG={lossG.item():.4f}")
+            progress_bar.set_description(f"epoch={epoch}, steps={n_batches_seen_this_epoch}/{len(trainloader)}, lossD={lossD.item():.4f}, lossG={lossG.item():.4f}")
             n_examples_seen += current_batch_size
             n_examples_seen_this_epoch += current_batch_size
+            n_batches_seen_this_epoch += 1
             if use_wandb:
                 wandb.log(dict(lossD=lossD, lossG=lossG), step=n_examples_seen)
 
