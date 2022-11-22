@@ -3,10 +3,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import reduce
-from operator import mul
 from typing import Any, Optional, Union
-import matplotlib.pyplot as plt
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +11,6 @@ from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
-import numpy as np
 import wandb
 
 import plotly.express as px
@@ -96,7 +92,7 @@ if MAIN:
 
 # %%
 
-def q_forward_simple(x: t.Tensor, num_steps: int, betas: t.Tensor) -> t.Tensor:
+def q_forward_slow(x: t.Tensor, num_steps: int, betas: t.Tensor) -> t.Tensor:
     '''Return the input image with num_steps iterations of noise added according to schedule.
     x: shape (channels, height, width)
     betas: shape (T, ) with T >= num_steps
@@ -118,7 +114,7 @@ if MAIN:
     print(x.shape, arr.shape)
     arr[0] = denormalize_img(x)
     for i, n in enumerate(noise_steps, 1):
-        xt = q_forward_simple(x, n, betas)
+        xt = q_forward_slow(x, n, betas)
         arr[i] = denormalize_img(xt)
     plot_img_slideshow(arr, f"Noise steps {noise_steps}")
 # %%
@@ -137,7 +133,7 @@ if MAIN:
     print(x.shape, arr.shape)
     arr[0] = denormalize_img(x)
     for i, n in enumerate(noise_steps, 1):
-        xt = q_forward_simple(x, n, betas)
+        xt = q_forward_slow(x, n, betas)
         arr[i] = denormalize_img(xt)
     plot_img_slideshow(arr, f"Noise steps {noise_steps}")
 
