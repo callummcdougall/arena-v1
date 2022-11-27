@@ -1,14 +1,10 @@
 # %%
 import numpy as np
-
-import plotly.express as px
-import plotly.graph_objs as go
-
-from typing import Optional, Callable
-
+from typing import Callable
 import ipywidgets as wg
-
 from fancy_einsum import einsum
+
+MAIN = __name__ == "__main__"
 
 def DFT_1d(arr : np.ndarray) -> np.ndarray:
     """
@@ -126,26 +122,27 @@ def calculate_fourier_series(func: Callable, max_freq: int = 50):
 
 # ==================================== PART 2A ====================================
 
-TARGET_FUNC = lambda x: 1 * (x > 0)
-NUM_FREQUENCIES = 2
-TOTAL_STEPS = 4000
-LEARNING_RATE = 1e-6
+if MAIN:
+    TARGET_FUNC = lambda x: 1 * (x > 0)
+    NUM_FREQUENCIES = 2
+    TOTAL_STEPS = 4000
+    LEARNING_RATE = 1e-6
 
-import numpy as np
-import math
+    import numpy as np
+    import math
 
-x = np.linspace(-math.pi, math.pi, 2000)
-y = TARGET_FUNC(x)
+    x = np.linspace(-math.pi, math.pi, 2000)
+    y = TARGET_FUNC(x)
 
-x_cos = np.array([np.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
-x_sin = np.array([np.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_cos = np.array([np.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_sin = np.array([np.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
 
-a_0 = np.random.randn()
-A_n = np.random.randn(NUM_FREQUENCIES)
-B_n = np.random.randn(NUM_FREQUENCIES)
+    a_0 = np.random.randn()
+    A_n = np.random.randn(NUM_FREQUENCIES)
+    B_n = np.random.randn(NUM_FREQUENCIES)
 
-y_pred_list = []
-coeffs_list = []
+    y_pred_list = []
+    coeffs_list = []
 
 for step in range(TOTAL_STEPS):
     
@@ -238,24 +235,25 @@ for step in range(TOTAL_STEPS):
 import torch
 import math
 
-dtype = torch.float
-device = torch.device("cpu")
+if MAIN:
+    dtype = torch.float
+    device = torch.device("cpu")
 
-x = torch.linspace(-math.pi, math.pi, 2000, device=device, dtype=dtype)
-y = TARGET_FUNC(x)
+    x = torch.linspace(-math.pi, math.pi, 2000, device=device, dtype=dtype)
+    y = TARGET_FUNC(x)
 
-x_cos = torch.stack([torch.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
-x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_cos = torch.stack([torch.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
 
-a_0 = torch.randn((), device=device, dtype=dtype, requires_grad=True)
-A_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype, requires_grad=True)
-B_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype, requires_grad=True)
+    a_0 = torch.randn((), device=device, dtype=dtype, requires_grad=True)
+    A_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype, requires_grad=True)
+    B_n = torch.randn((NUM_FREQUENCIES), device=device, dtype=dtype, requires_grad=True)
 
-LEARNING_RATE = 1e-6
-TOTAL_STEPS = 4000
+    LEARNING_RATE = 1e-6
+    TOTAL_STEPS = 4000
 
-y_pred_list = []
-coeffs_list = []
+    y_pred_list = []
+    coeffs_list = []
 
 for step in range(TOTAL_STEPS):
     
@@ -285,24 +283,25 @@ for step in range(TOTAL_STEPS):
 import torch
 import math
 
-dtype = torch.float
-device = torch.device("cpu")
+if MAIN:
+    dtype = torch.float
+    device = torch.device("cpu")
 
-x = torch.linspace(-math.pi, math.pi, 2000, device=device, dtype=dtype)
-y = TARGET_FUNC(x)
+    x = torch.linspace(-math.pi, math.pi, 2000, device=device, dtype=dtype)
+    y = TARGET_FUNC(x)
 
-x_cos = torch.stack([torch.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
-x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_cos = torch.stack([torch.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
 
-x_all = torch.concat([x_cos, x_sin], dim=0).T # we use .T so that it the 0th axis is batch dim
+    x_all = torch.concat([x_cos, x_sin], dim=0).T # we use .T so that it the 0th axis is batch dim
 
-LEARNING_RATE = 1e-6
-TOTAL_STEPS = 4000
+    LEARNING_RATE = 1e-6
+    TOTAL_STEPS = 4000
 
-y_pred_list = []
-coeffs_list = []
+    y_pred_list = []
+    coeffs_list = []
 
-model = torch.nn.Sequential(torch.nn.Linear(2 * NUM_FREQUENCIES, 1), torch.nn.Flatten(0, 1))
+    model = torch.nn.Sequential(torch.nn.Linear(2 * NUM_FREQUENCIES, 1), torch.nn.Flatten(0, 1))
 
 for step in range(TOTAL_STEPS):
     
@@ -335,26 +334,27 @@ for step in range(TOTAL_STEPS):
 import torch
 import math
 
-dtype = torch.float
-device = torch.device("cpu")
+if MAIN:
+    dtype = torch.float
+    device = torch.device("cpu")
 
-x = torch.linspace(-math.pi, math.pi, 2000, device=device, dtype=dtype)
-y = TARGET_FUNC(x)
+    x = torch.linspace(-math.pi, math.pi, 2000, device=device, dtype=dtype)
+    y = TARGET_FUNC(x)
 
-x_cos = torch.stack([torch.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
-x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_cos = torch.stack([torch.cos(n*x) for n in range(1, NUM_FREQUENCIES+1)])
+    x_sin = torch.stack([torch.sin(n*x) for n in range(1, NUM_FREQUENCIES+1)])
 
-x_all = torch.concat([x_cos, x_sin], dim=0).T # we use .T so that it the 0th axis is batch dim
+    x_all = torch.concat([x_cos, x_sin], dim=0).T # we use .T so that it the 0th axis is batch dim
 
-LEARNING_RATE = 1e-6
-TOTAL_STEPS = 4000
+    LEARNING_RATE = 1e-6
+    TOTAL_STEPS = 4000
 
-y_pred_list = [] 
-coeffs_list = []
+    y_pred_list = [] 
+    coeffs_list = []
 
-model = nn.Sequential(torch.nn.Linear(2 * NUM_FREQUENCIES, 1), torch.nn.Flatten(0, 1))
+    model = nn.Sequential(torch.nn.Linear(2 * NUM_FREQUENCIES, 1), torch.nn.Flatten(0, 1))
 
-optimiser = optim.SGD(model.parameters(), lr=1e-6)
+    optimiser = optim.SGD(model.parameters(), lr=1e-6)
 
 for step in range(TOTAL_STEPS):
     
@@ -379,9 +379,9 @@ for step in range(TOTAL_STEPS):
 
 # %%
 
-from tqdm.notebook import tqdm_notebook
-import time
+# from tqdm.notebook import tqdm_notebook
+# import time
 
-for j in tqdm_notebook(range(5)):
-    for i in tqdm_notebook(range(100), leave=False):
-        time.sleep(0.01)
+# for j in tqdm_notebook(range(5)):
+#     for i in tqdm_notebook(range(100), leave=False):
+#         time.sleep(0.01)
